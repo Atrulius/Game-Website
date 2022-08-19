@@ -1,0 +1,1359 @@
+
+
+<body>
+
+    <!--
+
+    **  ** ****** **  ** **
+    **  **   **   ****** **
+    ******   **   **  ** **
+    **  **   **   **  ** **
+    **  **   **   **  ** ******
+
+    -->
+
+    <canvas id="cSnake" width="500" height="500" style="border:5px solid #000000;position:absolute; margin: auto;background-color: rgba(0, 0, 0, 0.25);visibility:visible;"></canvas>
+    <canvas id="cFlappy" width="500" height="500" style="border:5px solid #000000;position:absolute; margin: auto;background-color: rgba(0, 0, 0, 0.25); visibility:hidden;"></canvas>
+    <canvas id="cPlatformer" width="1000" height="500" style="border:5px solid #000000;position:absolute; margin: auto;background-color: rgba(0, 0, 0, 0.25); visibility:hidden;"></canvas>
+    <canvas id="cParticles" width="500" height="500" style="border: 5px solid #000000; position:absolute; background-color: rgba(0, 0, 0, 0.25); visibility: hidden; "></canvas>
+    <canvas id="cRaycast" width="500" height="500" style="border: 5px solid #000000; background-color: rgba(0, 0, 0, 0.25); visibility: hidden; "></canvas>
+    <canvas id="cRaycast3D" width="500" height="500" style="border: 5px solid #000000; position: absolute; transform: translate(100%, -100%); background-color: rgba(0, 0, 0, 0.25); visibility: hidden;"></canvas>
+    <button id="btnShowSnake" onclick="showSnake()">Snake</button>
+    <button id="btnShowFlappy" onclick="showFlappy()">Flappy Bird</button>
+    <button id="btnShowPlatformer" onclick="showPlatformer()">Platformer</button>
+    <button id="btnShowRaycast" onclick="showRaycast()">Raycast</button>
+    <button id="btnShowParticles" onclick="showParticles()">Particles</button>
+    <div style="visibility:hidden" id="idRaycastSliders">
+        <p>FOV</p>
+        <input type="range" min="22.5" max="90" value="45" step="0.5" class="slider" id="idRaycastFOV">
+        <button id="btnRaycastSwitchMap" onclick="raycastSwitchMap()" style="visibility:hidden">Arena</button>
+    </div>
+    <div id="idParticleSliders" style="line-height:0; visibility:hidden; position:absolute; transform: translate(400%,-140%)">
+        <p>X velocity</p>
+        <input type="range" min="0" max="50" value="10" step="0.01" class="slider" id="idParticleStartVelX">
+        <p>Y velocity</p>
+        <input type="range" min="-20" max="20" value="10" step="1" class="slider" id="idParticleStartVelY">
+        <p>Gravity</p>
+        <input type="range" min="-5" max="5" value="1" step="0.5" class="slider" id="idParticleGravity">
+        <p>Speed</p>
+        <input type="range" min="0.01" max="2" value="1" step="0.01" class="slider" id="idParticleSpeed">
+        <p>Lifetime</p>
+        <input type="range" min="10" max="5000" value="500" class="slider" id="idParticleLifetime">
+        <p>Size</p>
+        <input type="range" min="1" max="25" value="15" class="slider" id="idParticleStartSize">
+        <p>Amount</p>
+        <input type="range" min="5" max="250" value="50" step="1" class="slider" id="idParticleAmount">
+    </div>
+
+    <!--
+
+     *****  ****   ****
+    **     **     **
+    **      ****   ****
+    **         **     **
+     *****  ****   ****
+
+    -->
+
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+
+    <!--
+
+      ****  ****  **  **  ****   ****   ***** *****   ****  *****  ******
+       **  **  ** **  ** **  ** **     **     **  **   **   **  **   **
+       **  ******  ****  ******  ****  **     *****    **   *****    **
+    ** **  **  **  ****  **  **     ** **     ** **    **   **       **
+     ***   **  **   **   **  **  ****   ***** **  **  ****  **       **
+
+    -->
+
+    <script type="text/javascript">
+
+        let bSnake = true
+        let bFlappy = false
+        let bPlatformer = false
+        let bRaycast = false
+        let bParticles = false
+
+        function showSnake() {
+            hideAllCanvases();
+            document.getElementById("cSnake").style.visibility = "visible";
+            bSnake = true
+        }
+
+        function showFlappy() {
+            hideAllCanvases();
+            document.getElementById("cFlappy").style.visibility = "visible";
+            bFlappy = true
+        }
+
+        function showPlatformer() {
+            hideAllCanvases();
+            platformerReset();
+            document.getElementById("cPlatformer").style.visibility = "visible";
+            bPlatformer = true
+        }
+
+        function showRaycast() {
+            hideAllCanvases();
+            document.getElementById("cRaycast").style.visibility = "visible";
+            document.getElementById("cRaycast3D").style.visibility = "visible";
+            document.getElementById("idRaycastSliders").style.visibility = "visible";
+            bRaycast = true
+        }
+
+        function showParticles() {
+            hideAllCanvases();
+            document.getElementById("cParticles").style.visibility = "visible";
+            document.getElementById("idParticleSliders").style.visibility = "visible";
+            bParticles = true
+        }
+
+        function hideAllCanvases() {
+            document.getElementById("cSnake").style.visibility = "hidden";
+            document.getElementById("cFlappy").style.visibility = "hidden";
+            document.getElementById("cPlatformer").style.visibility = "hidden";
+            document.getElementById("cRaycast").style.visibility = "hidden";
+            document.getElementById("cRaycast3D").style.visibility = "hidden";
+            document.getElementById("idRaycastSliders").style.visibility = "hidden";
+            document.getElementById("cParticles").style.visibility = "hidden";
+            document.getElementById("idParticleSliders").style.visibility = "hidden";
+            bSnake = false
+            bFlappy = false
+            bPlatformer = false
+            bRaycast = false
+            bParticles = false
+        }
+
+        function Update() {
+            if(bSnake){
+
+            }
+            if(bFlappy){
+
+            }
+            if(bPlatformer){
+
+            }
+            if(bRaycast){
+
+            }
+            if(bParticles){
+                
+            }
+        }
+
+        /*
+
+        *****   ****   ***** **  **  ****  *****   ****  **  ** **  ** *****
+        **  ** **  ** **     ** **  **     **  ** **  ** **  ** *** ** **  **
+        *****  ****** **     ****   ** *** *****  **  ** **  ** ****** **  **
+        **  ** **  ** **     ** **  **  ** ** **  **  ** **  ** ** *** **  **
+        *****  **  **  ***** **  **  ****  **  **  ****   ****  **  ** *****
+
+        */
+
+        let Speed;
+
+        let iR = 0;
+        let iG = 255;
+        let iB = 255;
+
+        let flash = 1;
+
+        let bR = true;
+        let bG = false;
+        let bB = false;
+
+        let lastFlash = 0;
+
+        let fR = 0;
+        let fG = 0;
+        let fB = 0;
+
+        let x = 0;
+        let y = 300;
+        let yAcceleration = 0;
+
+        colorchange();
+        pulse();
+
+        function colorchange() {
+            if (bR) {
+                iR++;
+                iG = 255;
+                iB--;
+                if (iR >= 255) {
+                    iR = 255;
+                    iG = 255;
+                    iB = 0;
+                    bR = false;
+                    bG = false;
+                    bB = true;
+                }
+            }
+            if (bG) {
+                iR--;
+                iG++;
+                iB = 255;
+                if (iG >= 255) {
+                    iR = 0;
+                    iG = 255;
+                    iB = 255;
+                    bR = true;
+                    bG = false;
+                    bB = false;
+                }
+            }
+            if (bB) {
+                iR = 255;
+                iG--;
+                iB++;
+                if (iB >= 255) {
+                    iR = 255;
+                    iG = 0;
+                    iB = 255;
+                    bR = false;
+                    bG = true;
+                    bB = false;
+                }
+            }
+            document.body.style.backgroundColor = "rgb(" + (iR + fR) + "," + (iG + fG) + "," + (iB + fB) + ")";
+            Speed = 100;
+            setTimeout(function () { colorchange(); }, Speed);
+        }
+
+        function pulse() {
+            pulseDelay = 0;
+            pulseSpeed = 0;
+            pulsePower = 0;
+            lastFlash++;
+            if (lastFlash >= pulseDelay) {
+                lastFlash = 0;
+                flash = 255;
+            }
+            if (flash > 0) {
+                flash--;
+                if (pulsePower > 0) {
+                    fR = flash / 255 * (255 - iR) * pulsePower;
+                    fG = flash / 255 * (255 - iG) * pulsePower;
+                    fB = flash / 255 * (255 - iB) * pulsePower;
+                }
+                if (pulsePower < 0) {
+                    fR = flash / 255 * (iR) * pulsePower;
+                    fG = flash / 255 * (iG) * pulsePower;
+                    fB = flash / 255 * (iB) * pulsePower;
+                }
+            }
+            setTimeout(function () { pulse(); }, pulseSpeed);
+        }
+
+        /*
+
+         ****  **  **  ****  **  ** ******
+        **     *** ** **  ** ** **  **
+         ****  ****** ****** ****   ****
+            ** ** *** **  ** ** **  **
+         ****  **  ** **  ** **  ** ******
+
+        */
+
+        var iGrid = 10;
+
+        var sSpeed = 100;
+        var xPos;
+        var yPos;
+        var xMove;
+        var yMove;
+
+        var xMoveN;
+        var yMoveN;
+
+        var total = 0;
+
+        var appleSize = 10;
+        var appleSizeAcc = 0;
+        var appleSens = 0.1;
+
+        var sSize;
+
+        var cS = document.getElementById("cSnake");
+        var ctxS = cS.getContext("2d");
+
+        var xPosA = [];
+        var yPosA = [];
+
+        Restart();
+
+        sUpdate();
+
+        setTimeout(function () { Move(); }, sSpeed);
+
+        function sUpdate() {
+            appleSizeAcc -= appleSens;
+            appleSize += appleSizeAcc;
+            if (appleSize < 1) {
+                appleSizeAcc = 1.5;
+            }
+            setTimeout(function () { sUpdate(); }, 20);
+        }
+
+        function Move() {
+            xMoveN = xMove;
+            yMoveN = yMove;
+            sSize = 500 / iGrid;
+            ctxS.clearRect(0, 0, 500, 500);
+            for (var i = total; i > 0; i--) {
+                xPosA[i] = xPosA[i - 1];
+                yPosA[i] = yPosA[i - 1];
+            }
+            xPosA[0] = xPos;
+            yPosA[0] = yPos;
+            xPos += xMove * sSize;
+            yPos += yMove * sSize;
+            drawApple();
+            drawSnake();
+            if (xPos < 0 || yPos < 0 || xPos >= 500 || yPos >= 500) {
+                Restart();
+            }
+            if (xPos == xPosApple && yPos == yPosApple) {
+                total++;
+                xPosA.push(total);
+                yPosA.push(total);
+                ctxS.clearRect(0, 0, 500, 500);
+                drawSnake();
+                Apple();
+            }
+            setTimeout(function () { Move(); }, sSpeed);
+        }
+
+        function drawSnake() {
+            drawSnakeBg();
+            ctxS.fillStyle = "rgb(0, 255, 0)";
+            ctxS.beginPath();
+            ctxS.rect(xPos, yPos, sSize, sSize);
+            ctxS.fill();
+            for (var i = 0; i < total; i++) {
+                ctxS.beginPath();
+                ctxS.rect(xPosA[i], yPosA[i], sSize, sSize);
+                ctxS.fill();
+                if (xPos == xPosA[i] && yPos == yPosA[i]) {
+                    Restart();
+                    break;
+                }
+            }
+        }
+
+        function drawApple() {
+            drawAppleBg();
+            ctxS.fillStyle = "rgb(255, 0, 0)";
+            ctxS.beginPath();
+            ctxS.rect(xPosApple, yPosApple, sSize, sSize);
+            ctxS.fill();
+        }
+
+        function drawAppleBg() {
+            ctxS.fillStyle = "rgb(255, 255, 255)";
+            ctxS.beginPath();
+            ctxS.rect(xPosApple - appleSize / 2, yPosApple - appleSize / 2, sSize + appleSize, sSize + appleSize);
+            ctxS.fill();
+        }
+
+        function drawSnakeBg() {
+            ctxS.fillStyle = "rgb(0, 0, 0)";
+            ctxS.beginPath();
+            ctxS.rect(xPos - appleSize / 2, yPos - appleSize / 2, sSize + appleSize, sSize + appleSize);
+            ctxS.fill();
+            for (var i = 0; i < total; i++) {
+                ctxS.fillStyle = "rgb(0, 0, 0)";
+                ctxS.beginPath();
+                ctxS.rect(xPosA[i] - appleSize / 2, yPosA[i] - appleSize / 2, sSize + appleSize, sSize + appleSize);
+                ctxS.fill();
+            }
+        }
+
+        function Restart() {
+            sSize = 500 / iGrid;
+            ctxS.clearRect(0, 0, 500, 500);
+            xPos = Math.floor(Math.random() * iGrid) * sSize;
+            yPos = Math.floor(Math.random() * iGrid) * sSize;
+            xMove = 0;
+            yMove = 0;
+            total = 0;
+            xPosA = [];
+            yPosA = [];
+            drawSnake();
+            Apple();
+        }
+
+        function Apple() {
+            xPosApple = Math.floor(Math.random() * iGrid) * sSize;
+            yPosApple = Math.floor(Math.random() * iGrid) * sSize;
+            for (let i = 0; i < total; i++) {
+                if (xPosApple == xPosA[i] && yPosApple == yPosA[i]) {
+                    Apple();
+                }
+                else if (i == total - 1) {
+                    drawApple();
+                }
+            }
+        }
+
+        document.onkeydown = checkKey;
+
+        function checkKey(e) {
+
+            e = e || window.event;
+
+            if(bSnake) {
+                if (e.keyCode == "37") {
+                    if (xMoveN == 0) {
+                        xMove = -1;
+                        yMove = 0;
+                    }
+                }
+                else if (e.keyCode == "38") {
+                    if (yMoveN == 0) {
+                        xMove = 0;
+                        yMove = -1;
+                    }
+                }
+                else if (e.keyCode == "39") {
+                    if (xMoveN == 0) {
+                        xMove = 1;
+                        yMove = 0;
+                    }
+                }
+                else if (e.keyCode == "40") {
+                    if (yMoveN == 0) {
+                        xMove = 0;
+                        yMove = 1;
+                    }
+                }
+            }
+
+            if (bFlappy) {
+                if (e.keyCode == "38") {
+                    flappyStarted = true;
+                    jump = true;
+                }
+            }
+
+            if (bPlatformer) {
+                if (e.keyCode == "38") {
+                    platformerJumpIsActive = true;
+                }
+            }
+
+            if (bRaycast) {
+                if (e.keyCode == "37") {
+                    viewRotate(1);
+                }
+                else if (e.keyCode == "38") {
+                    viewMove(1);
+                }
+                else if (e.keyCode == "39") {
+                    viewRotate(-1);
+                }
+                else if (e.keyCode == "40") {
+                    viewMove(-1);
+                }
+                else if (e.keyCode == "32") {
+                    raycastShoot();
+                }
+            }
+        }
+
+        /*
+
+        ****** **      ****  *****  *****  **  ** *****   ****  *****  *****
+        **     **     **  ** **  ** **  ** **  ** **  **   **   **  ** **  **
+        ****   **     ****** *****  *****   ****  *****    **   *****  **  **
+        **     **     **  ** **     **       **   **  **   **   ** **  **  **
+        **     ****** **  ** **     **      **    *****   ****  **  ** *****
+
+        */
+
+        var cF = document.getElementById("cFlappy");
+        var ctxF = cF.getContext("2d");
+
+        var jump = false;
+
+        var Gravity = 0.75;
+
+        var birdSize = 50;
+
+        var xVel = 0;
+        var yVel = 0;
+
+        var xPosBird = 100;
+        var yPosBird = 100;
+
+        var xPosStruct = 1000;
+        var yPosStruct = 0;
+
+        var structSize = 75;
+
+        var structSpeed = 5;
+
+        var structSpace = 80;
+
+        var structMaxY = 200;
+
+        var flappyStarted = false;
+
+        var trails = 25;
+
+        var trailX = 5;
+
+        var yPosTrail = [];
+
+        var jumpPower = 10;
+
+        nextFrame();
+
+        newStructure();
+
+        function nextFrame() {
+            ctxF.clearRect(0, 0, 500, 500);
+            if (jump) {
+                yVel = jumpPower;
+                jump = false;
+            }
+            if (flappyStarted) {
+                yVel -= Gravity;
+                yPosBird -= yVel;
+            }
+            if (yPosBird < 0) {
+                fRestart();
+            }
+            if (yPosBird >= 500 - birdSize) {
+                fRestart();
+            }
+            if (xPosBird > xPosStruct - birdSize && xPosBird < xPosStruct + structSize && yPosBird + birdSize > yPosStruct + structSpace + 250 - structMaxY / 2) {
+                fRestart();
+            }
+            if (xPosBird > xPosStruct - birdSize && xPosBird < xPosStruct + structSize && yPosBird < yPosStruct - structSpace + 250 - structMaxY / 2) {
+                fRestart();
+            }
+            xPosStruct -= structSpeed;
+            drawBird();
+            drawStruct();
+            setTimeout(function () { nextFrame(); }, 20);
+        }
+
+        function drawBird() {
+            for (var i = trails; i > 0; i--) {
+                yPosTrail[i] = yPosTrail[i - 1];
+                ctxF.fillStyle = "rgba(255, 255, 127," + (1 / i) + ")";
+                ctxF.beginPath();
+                ctxF.rect(xPosBird - i * trailX, yPosTrail[i] - birdSize / 2 * ((trails - i) / trails) + birdSize / 2, birdSize * ((trails - i) / trails), birdSize * ((trails - i) / trails));
+                ctxF.fill();
+            }
+            yPosTrail[0] = yPosBird;
+            ctxF.fillStyle = "rgb(255, 255, 0)";
+            ctxF.beginPath();
+            ctxF.rect(xPosBird, yPosBird, birdSize, birdSize);
+            ctxF.fill();
+        }
+
+        function drawStruct() {
+            ctxF.fillStyle = "rgb(0, 255, 0)";
+            ctxF.beginPath();
+            ctxF.rect(xPosStruct, yPosStruct + structSpace + 250 - structMaxY / 2, structSize, 500);
+            ctxF.fill();
+            ctxF.beginPath();
+            ctxF.rect(xPosStruct, yPosStruct - structSpace + 250 - structMaxY / 2, structSize, -500);
+            ctxF.fill();
+        }
+
+        function fRestart() {
+            xPosBird = 100;
+            yPosBird = 100;
+            xPosStruct = -100;
+            yPosStruct = 0;
+
+            xVel = 0;
+            yVel = 0;
+
+            flappyStarted = false;
+        }
+
+        function newStructure() {
+            if (flappyStarted) {
+                xPosStruct = 500;
+            }
+            if (!flappyStarted) {
+                xPosStruct = 2000;
+            }
+            yPosStruct = Math.floor(Math.random() * structMaxY);
+            setTimeout(function () { newStructure(); }, 3000);
+        }
+
+        generateTrail();
+
+        function generateTrail() {
+            for (var i = 0; i < trails; i++) {
+                yPosTrail.push();
+            }
+        }
+
+        /*
+
+        *****  **      ****  ****** ******  ****  *****  **  ** ****** *****
+        **  ** **     **  **   **   **     **  ** **  ** ****** **     **  **
+        *****  **     ******   **   ****   **  ** *****  **  ** ****   *****
+        **     **     **  **   **   **     **  ** ** **  **  ** **     ** **
+        **     ****** **  **   **   **      ****  **  ** **  ** ****** **  **
+
+        */
+
+        var canvasPlatformer = document.getElementById("cPlatformer");
+        var contextPlatformer = canvasPlatformer.getContext("2d");
+
+        var platformerSpeed = 0.175;
+        var platformerGravity = 0.02;
+        var platformerLevelOffset = 12;
+        var platformerPositionY = 8;
+        var platformerVelocityY = 0;
+        var platformerCellSize = 50;
+        var platformerJumpPower = 0.315;
+        var platformerGroundPositionY = 9;
+        var platformerGamemode = 0;
+        var platformerLevel = Math.floor(Math.random() * 2) + 1;
+        var platformerGravityFlipOverlayPositionY = 0;
+        var platformerGravityFlipOverlayVelocityY = 0
+        var platformerGravityFlipOverlayOpacity = 0;
+
+        let platformerGravityIsFlipped = false;
+        var platformerJumpIsActive = false;
+        var platformerGrounded = false;
+
+        var platformerLevelLayout = new Array();
+
+        /*
+
+        LEVEL LAYOUT
+
+        0 - Air
+        1 - Solid
+        2 - Bottom Death Block
+        3 - Top Death Block
+        4 - Portal That Changes Gamemode To Gravity Flipper
+        5 - Portal That Changes Gamemode To Jumper
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+        */
+
+        // EMPTY LEVEL , USED FOR MAKING A NEW LEVEL FROM SCRATCH
+
+        platformerLevelLayout[0] = new Array();
+
+        platformerLevelLayout[0][0] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        platformerLevelLayout[0][1] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        platformerLevelLayout[0][2] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        platformerLevelLayout[0][3] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        platformerLevelLayout[0][4] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        platformerLevelLayout[0][5] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        platformerLevelLayout[0][6] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        platformerLevelLayout[0][7] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        platformerLevelLayout[0][8] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        // LEVEL 1
+
+        platformerLevelLayout[1] = new Array();
+
+        platformerLevelLayout[1][0] = new Array(1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 1, 0, 1, 0, 0, 0, 0, 0, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1);
+        platformerLevelLayout[1][1] = new Array(1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1);
+        platformerLevelLayout[1][2] = new Array(1, 0, 1, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0);
+        platformerLevelLayout[1][3] = new Array(1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 5, 0);
+        platformerLevelLayout[1][4] = new Array(1, 1, 1, 0, 0, 0, 0, 0, 2, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 0, 1, 0, 0, 0, 0, 0, 2, 2, 2, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0);
+        platformerLevelLayout[1][5] = new Array(2, 2, 2, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2);
+        platformerLevelLayout[1][6] = new Array(0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1);
+        platformerLevelLayout[1][7] = new Array(1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 2, 1, 0, 1, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 1, 0, 1);
+        platformerLevelLayout[1][8] = new Array(1, 0, 0, 1, 2, 2, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 1, 0, 1, 2, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 2, 2, 2, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1);
+
+        // LEVEL 2
+
+        platformerLevelLayout[2] = new Array();
+
+        platformerLevelLayout[2][0] = new Array(2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 2, 2, 2, 2, 1, 1, 2, 2, 2, 2, 1, 1, 2, 2, 2, 2, 1, 1);
+        platformerLevelLayout[2][1] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1);
+        platformerLevelLayout[2][2] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1);
+        platformerLevelLayout[2][3] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 1, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        platformerLevelLayout[2][4] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        platformerLevelLayout[2][5] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        platformerLevelLayout[2][6] = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 1, 2, 2, 2, 2, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+        platformerLevelLayout[2][7] = new Array(0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
+        platformerLevelLayout[2][8] = new Array(2, 2, 1, 0, 0, 1, 2, 2, 2, 2, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
+
+        /*
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+        */
+
+        platformerUpdate();
+
+        function platformerUpdate() {
+            platformerLevelOffset -= platformerSpeed;
+            platformerCollisionDetection();
+            if (platformerGrounded) {
+                platformerVelocityY = 0;
+            }
+            if (platformerJumpIsActive) {
+                if (platformerGamemode == 0 && platformerGrounded) {
+                    if (!platformerGravityIsFlipped) {
+                        platformerVelocityY = -platformerJumpPower;
+                    }
+                    else if (platformerGravityIsFlipped) {
+                        platformerVelocityY = platformerJumpPower;
+                    }
+                }
+                if (platformerGamemode == 1) {
+                    platformerGravityIsFlipped = !platformerGravityIsFlipped;
+                    if (platformerGravityIsFlipped) {
+                        platformerGravityFlipOverlayPositionY = 500;
+                        platformerGravityFlipOverlayVelocityY = -25;
+                        platformerGravityFlipOverlayOpacity = 1;
+                    }
+                    else {
+                        platformerGravityFlipOverlayPositionY = -500;
+                        platformerGravityFlipOverlayVelocityY = 25;
+                        platformerGravityFlipOverlayOpacity = 1;
+                    }
+                }
+                platformerJumpIsActive = false;
+            }
+            platformerGravityFlipOverlayPositionY += platformerGravityFlipOverlayVelocityY;
+            platformerGravityFlipOverlayOpacity -= 0.05;
+            if (!platformerGravityIsFlipped) {
+                platformerVelocityY += platformerGravity;
+            }
+            else if (platformerGravityIsFlipped) {
+                platformerVelocityY -= platformerGravity;
+            }
+            if (!platformerGrounded) {
+                platformerPositionY += platformerVelocityY;
+            }
+            platformerDraw();
+            setTimeout(function () { platformerUpdate(); }, 1000 / 60);
+        }
+
+        function platformerCollisionDetection() {
+            if (platformerPositionY + 1 + platformerVelocityY > 9) {
+                platformerGrounded = true;
+                platformerPositionY = 8;
+            }
+            else {
+                platformerGrounded = false;
+            }
+            for (var column = 0; column < 9; column++) {
+                for (var row = Math.floor(-platformerLevelOffset); row < Math.floor(-platformerLevelOffset + 3); row++) {
+                    if (platformerLevelLayout[platformerLevel][column][row] == 1 && platformerPositionY + 1 + platformerVelocityY - 0.05 > column && platformerPositionY + platformerVelocityY + 0.05 < column + 1 && 0.25 < row + platformerLevelOffset && 1.75 > row + platformerLevelOffset) {
+                        platformerGrounded = true;
+                        if (!platformerGravityIsFlipped) {
+                            platformerPositionY -= 0.5;
+                            if (platformerPositionY + 0.95 + platformerVelocityY > column) {
+                                if (platformerGamemode == 1) {
+                                    platformerPositionY += 1;
+                                    if (platformerPositionY - 0.05 + platformerVelocityY < column + 1) {
+                                        platformerReset();
+                                    }
+                                    else {
+                                        platformerPositionY = column + 0.95;
+                                    }
+                                }
+                                else {
+                                    platformerReset();
+                                }
+                            }
+                            else {
+                                platformerPositionY = column - 0.95;
+                            }
+                        }
+                        else {
+                            platformerPositionY += 0.5;
+                            if (platformerPositionY - 0.05 + platformerVelocityY < column + 1) {
+                                if (platformerGamemode == 1) {
+                                    platformerPositionY -= 1;
+                                    if (platformerPositionY + 0.95 + platformerVelocityY > column) {
+                                        platformerReset();
+                                    }
+                                    else {
+                                        platformerPositionY = column - 0.95;
+                                    }
+                                }
+                                else {
+                                    platformerReset();
+                                }
+                            }
+                            else {
+                                platformerPositionY = column + 0.95;
+                            }
+                        }
+                    }
+                    if (platformerLevelLayout[platformerLevel][column][row] == 2) {
+                        if (column != 8) {
+                            if (platformerLevelLayout[platformerLevel][column + 1][row] == 1) {
+                                if (platformerPositionY + 1 > column + 0.75 && platformerPositionY + 0.05 < column + 1 && 0.25 < row + platformerLevelOffset && 1.75 > row + platformerLevelOffset) {
+                                    platformerReset();
+                                }
+                            }
+                        }
+                        else {
+                            if (platformerPositionY + 1 > column + 0.75 && platformerPositionY + 0.05 < column + 1 && 0.25 < row + platformerLevelOffset && 1.75 > row + platformerLevelOffset) {
+                                platformerReset();
+                            }
+                        }
+                        if (column != 0) {
+                            if (platformerLevelLayout[platformerLevel][column - 1][row] == 1 || column == 0) {
+                                if (platformerPositionY + 1 > column && platformerPositionY + 0.05 < column + 0.25 && 0.25 < row + platformerLevelOffset && 1.75 > row + platformerLevelOffset) {
+                                    platformerReset();
+                                }
+                            }
+                        }
+                        else {
+                            if (platformerPositionY + 1 > column && platformerPositionY + 0.05 < column + 0.25 && 0.25 < row + platformerLevelOffset && 1.75 > row + platformerLevelOffset) {
+                                platformerReset();
+                            }
+                        }
+                    }
+                    if (platformerLevelLayout[platformerLevel][column][row] == 4 && platformerPositionY + 1 + platformerVelocityY > column - 1 && platformerPositionY + platformerVelocityY + 0.1 < column + 2 && 0.25 < row + platformerLevelOffset && 1.75 > row + platformerLevelOffset) {
+                        platformerGamemode = 1;
+                    }
+                    if (platformerLevelLayout[platformerLevel][column][row] == 5 && platformerPositionY + 1 + platformerVelocityY > column - 1 && platformerPositionY + platformerVelocityY + 0.1 < column + 2 && 0.25 < row + platformerLevelOffset && 1.75 > row + platformerLevelOffset) {
+                        platformerGamemode = 0;
+                    }
+                }
+            }
+        }
+
+        function platformerDraw() {
+            contextPlatformer.clearRect(0, 0, 1000, 500);
+            platformerDrawLevelBlockBackground();
+            platformerDrawLevel();
+            platformerDrawGround();
+            platformerDrawPlayer();
+            contextPlatformer.fillStyle = "rgb(255, 255, 255," + platformerGravityFlipOverlayOpacity + ")";
+            contextPlatformer.beginPath();
+            contextPlatformer.rect(0, platformerGravityFlipOverlayPositionY, 1000, 500);
+            contextPlatformer.fill();
+        }
+
+        function platformerDrawGround() {
+            contextPlatformer.fillStyle = "rgb(255, 255, 255)";
+            contextPlatformer.beginPath();
+            contextPlatformer.rect(0, platformerGroundPositionY * platformerCellSize, 1000, platformerCellSize);
+            contextPlatformer.fill();
+        }
+
+        function platformerDrawPlayer() {
+            contextPlatformer.fillStyle = "rgb(255, 255, 255)";
+            contextPlatformer.beginPath();
+            contextPlatformer.rect(platformerCellSize, platformerPositionY * platformerCellSize, platformerCellSize, platformerCellSize);
+            contextPlatformer.fill();
+        }
+
+        function platformerDrawLevelBlockBackground() {
+            for (var column = 0; column < 9; column++) {
+                for (var row = Math.floor(-platformerLevelOffset); row < Math.floor(-platformerLevelOffset + 21); row++) {
+                    contextPlatformer.beginPath();
+                    if (platformerLevelLayout[platformerLevel][column][row] == 1) {
+                        contextPlatformer.fillStyle = "rgb(0, 0, 0)";
+                        contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize - 1 - 0.0375 * platformerCellSize, column * platformerCellSize - 1 - 0.0375 * platformerCellSize, platformerCellSize + 2 + 0.075 * platformerCellSize, platformerCellSize + 2 + 0.075 * platformerCellSize);
+                    }
+                    if (platformerLevelLayout[platformerLevel][column][row] == 2) {
+                        contextPlatformer.fillStyle = "rgba(255, 63, 63, 0.33)";
+                        if (column != 8) {
+                            if (platformerLevelLayout[platformerLevel][column + 1][row] == 1) {
+                                contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize - 1, column * platformerCellSize + 0.75 * platformerCellSize - 1 - 0.5 * appleSize, platformerCellSize + 2, 0.25 * platformerCellSize + 2);
+                            }
+                        }
+                        else {
+                            contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize - 1, column * platformerCellSize + 0.75 * platformerCellSize - 1 - 0.5 * appleSize, platformerCellSize + 2, 0.25 * platformerCellSize + 2);
+                        }
+                        if (column != 0) {
+                            if (platformerLevelLayout[platformerLevel][column - 1][row] == 1 || column == 0) {
+                                contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize - 1, column * platformerCellSize - 1 + 0.5 * appleSize, platformerCellSize + 2, 0.25 * platformerCellSize + 2);
+                            }
+                        }
+                        else {
+                            contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize - 1, column * platformerCellSize - 1 + 0.5 * appleSize, platformerCellSize + 2, 0.25 * platformerCellSize + 2);
+                        }
+                    }
+                    if (platformerLevelLayout[platformerLevel][column][row] == 3) {
+                        contextPlatformer.fillStyle = "rgba(255, 63, 63, 0.33)";
+                        contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize - 1, column * platformerCellSize - 1 + 0.5 * appleSize, platformerCellSize + 2, 0.25 * platformerCellSize + 2);
+                    }
+                    if (platformerLevelLayout[platformerLevel][column][row] == 4) {
+                        contextPlatformer.fillStyle = "rgb(0, 0, 0)";
+                        contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize + 0.1 * platformerCellSize - appleSize / 4 - 0.05 * platformerCellSize, (column - 1) * platformerCellSize - 0.05 * platformerCellSize - appleSize / 4 + 0.05 * platformerCellSize, 0.8 * platformerCellSize + appleSize / 2 + 0.1 * platformerCellSize, 3 * platformerCellSize - 0.1 * platformerCellSize + appleSize / 2 + 0.1 * platformerCellSize);
+                    }
+                    if (platformerLevelLayout[platformerLevel][column][row] == 5) {
+                        contextPlatformer.fillStyle = "rgb(0, 0, 0)";
+                        contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize + 0.1 * platformerCellSize - appleSize / 4 - 0.05 * platformerCellSize, (column - 1) * platformerCellSize - 0.05 * platformerCellSize - appleSize / 4 + 0.05 * platformerCellSize, 0.8 * platformerCellSize + appleSize / 2 + 0.1 * platformerCellSize, 3 * platformerCellSize - 0.1 * platformerCellSize + appleSize / 2 + 0.1 * platformerCellSize);
+                    }
+                    contextPlatformer.fill();
+                }
+            }
+        }
+
+        function platformerDrawLevel() {
+            for (var column = 0; column < 9; column++) {
+                for (var row = Math.floor(-platformerLevelOffset); row < Math.floor(-platformerLevelOffset + 21); row++) {
+                    contextPlatformer.beginPath();
+                    if (platformerLevelLayout[platformerLevel][column][row] == 1) {
+                        contextPlatformer.fillStyle = "rgb(255, 255, 255)";
+                        contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize - 1, column * platformerCellSize - 1, platformerCellSize + 2, platformerCellSize + 2);
+                    }
+                    if (platformerLevelLayout[platformerLevel][column][row] == 2) {
+                        contextPlatformer.fillStyle = "rgb(255, 0, 0)";
+                        if (column != 8) {
+                            if (platformerLevelLayout[platformerLevel][column + 1][row] == 1) {
+                                contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize - 1, column * platformerCellSize + 0.75 * platformerCellSize - 1, platformerCellSize + 2, 0.25 * platformerCellSize + 2);
+                            }
+                        }
+                        else {
+                            contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize - 1, column * platformerCellSize + 0.75 * platformerCellSize - 1, platformerCellSize + 2, 0.25 * platformerCellSize + 2);
+                        }
+                        if (column != 0) {
+                            if (platformerLevelLayout[platformerLevel][column - 1][row] == 1 || column == 0) {
+                                contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize - 1, column * platformerCellSize - 1, platformerCellSize + 2, 0.25 * platformerCellSize + 2);
+                            }
+                        }
+                        else {
+                            contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize - 1, column * platformerCellSize - 1, platformerCellSize + 2, 0.25 * platformerCellSize + 2);
+                        }
+                    }
+                    if (platformerLevelLayout[platformerLevel][column][row] == 4) {
+                        contextPlatformer.fillStyle = "rgb(255, 191, 0)";
+                        contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize + 0.1 * platformerCellSize, (column - 1) * platformerCellSize + 0.05 * platformerCellSize, 0.8 * platformerCellSize, 3 * platformerCellSize - 0.1 * platformerCellSize);
+                    }
+                    if (platformerLevelLayout[platformerLevel][column][row] == 5) {
+                        contextPlatformer.fillStyle = "rgb(0, 191, 255)";
+                        contextPlatformer.rect(row * platformerCellSize + platformerLevelOffset * platformerCellSize + 0.1 * platformerCellSize, (column - 1) * platformerCellSize + 0.05 * platformerCellSize, 0.8 * platformerCellSize, 3 * platformerCellSize - 0.1 * platformerCellSize);
+                    }
+                    contextPlatformer.fill();
+                }
+            }
+        }
+
+        function platformerReset() {
+            platformerPositionY = 8;
+            platformerVelocityY = 0;
+            platformerLevelOffset = 12;
+            platformerGamemode = 0;
+            platformerGravityIsFlipped = false;
+            platformerLevel = Math.floor(Math.random() * 2) + 1;
+        }
+
+        /*
+
+
+
+        */
+
+        var cR = document.getElementById("cRaycast");
+        var ctxR = cR.getContext("2d");
+
+        var c3D = document.getElementById("cRaycast3D");
+        var ctx3D = c3D.getContext("2d");
+
+        var lines = 500;
+
+        var FOV = 45;
+
+        var ang = 0;
+        var angOffset = 90 - FOV / 2;
+        var centerX = 0;
+        var centerY = 0;
+        var currentX = 0;
+        var currentY = 0;
+        var xLineMove = 0;
+        var yLineMove = 0;
+
+        var raycastGridX = 16;
+        var raycastGridY = 16;
+        var raycastSizeX = 0;
+        var raycastSizeY = 0;
+
+        var heightSens = 1;
+
+        var diff = 0;
+
+        var currentDistance = 0;
+
+        var Sensitivity = 22.5;
+
+        var raycastMap = new Array();
+
+        var testest = false;
+
+        var raycastCurrentMap = 0;
+
+        var raycastEnemyPositionX = 0;
+        var raycastEnemyPositionY = 0;
+
+        var raycastShotTimer = 100;
+        var raycastShot = false;
+
+        var raycastShotgun = new Image();
+        raycastShotgun.src = "images/shotgun_standard.png";
+
+        var raycastShotgunShot = new Image();
+        raycastShotgunShot.src = "images/shotgun_shot.png";
+
+        raycastMap[0] = new Array();
+
+        raycastMap[0][0] = new Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+        raycastMap[0][1] = new Array(1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1);
+        raycastMap[0][2] = new Array(1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1);
+        raycastMap[0][3] = new Array(1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1);
+        raycastMap[0][4] = new Array(1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1);
+        raycastMap[0][5] = new Array(1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1);
+        raycastMap[0][6] = new Array(1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1);
+        raycastMap[0][7] = new Array(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
+        raycastMap[0][8] = new Array(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
+        raycastMap[0][9] = new Array(1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1);
+        raycastMap[0][10] = new Array(1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1);
+        raycastMap[0][11] = new Array(1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1);
+        raycastMap[0][12] = new Array(1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1);
+        raycastMap[0][13] = new Array(1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1);
+        raycastMap[0][14] = new Array(1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1);
+        raycastMap[0][15] = new Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+
+        raycastSpawnEnemy();
+
+        raycastShootTimer();
+
+        Draw();
+
+        function raycastShootTimer() {
+            raycastShotTimer++;
+            if (raycastShotTimer == 1) {
+                raycastShot = true;
+                Draw();
+            }
+            else if (raycastShotTimer == 150) {
+                raycastShot = false;
+                Draw();
+            }
+            setTimeout(function () { raycastShootTimer(); }, 1);
+        }
+
+        function raycastShoot() {
+            if (!raycastShot) {
+                raycastShotTimer = 0;
+                if (raycastCurrentMap == 0) {
+                    currentDistance = 0;
+                    currentX = 250 + centerX;
+                    currentY = 250 + centerY;
+                    ang = FOV / 2 + angOffset;
+                    xLineMove = Math.sin(Math.PI * 2 * ang / 360);
+                    yLineMove = Math.cos(Math.PI * 2 * ang / 360);
+                    while (true) {
+                        currentDistance++;
+                        currentX += xLineMove;
+                        currentY += yLineMove;
+                        if (currentX >= raycastEnemyPositionX * raycastSizeX - 0.5 * raycastSizeX && currentY >= raycastEnemyPositionY * raycastSizeY - 0.5 * raycastSizeY && currentX <= (raycastEnemyPositionX + 1) * raycastSizeX + 0.5 * raycastSizeX && currentY <= (raycastEnemyPositionY + 1) * raycastSizeY + 0.5 * raycastSizeY) {
+                            raycastSpawnEnemy();
+                            Draw();
+                            break;
+                        }
+                        for (var column = 0; column < raycastGridY; column++) {
+                            for (var row = 0; row < raycastGridX; row++) {
+                                if (raycastMap[raycastCurrentMap][column][row] == 1 && currentX >= row * raycastSizeX && currentY >= column * raycastSizeY && currentX <= (row + 1) * raycastSizeX && currentY <= (column + 1) * raycastSizeY) {
+                                    testest = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (testest) {
+                            break;
+                        }
+                        if (currentDistance >= 150) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        function raycastSwitchMap() {
+            if (document.getElementById("btnRaycastSwitchMap").innerText == "Arena") {
+                document.getElementById("btnRaycastSwitchMap").innerText = "Map With Blocks";
+                FOV = document.getElementById("idRaycastFOV").value;
+                raycastCurrentMap = 1;
+                raycastSpawnEnemy();
+                Draw();
+            }
+            else {
+                document.getElementById("btnRaycastSwitchMap").innerText = "Arena";
+                FOV = document.getElementById("idRaycastFOV").value;
+                raycastCurrentMap = 0;
+                Draw();
+            }
+        }
+
+        function raycastSpawnEnemy() {
+            while (true) {
+                raycastEnemyPositionX = Math.floor(Math.random() * raycastGridX);
+                raycastEnemyPositionY = Math.floor(Math.random() * raycastGridY);
+                for (var column = 0; column < raycastGridY; column++) {
+                    for (var row = 0; row < raycastGridX; row++) {
+                        if (raycastEnemyPositionX == row && raycastEnemyPositionY == column && raycastMap[0][column][row] == 0) {
+                            testest = true;
+                            break;
+                        }
+                    }
+                }
+                if (testest) {
+                    testest = false;
+                    break;
+                }
+            }
+        }
+
+        function viewRotate(degrees) {
+            FOV = document.getElementById("idRaycastFOV").value;
+            angOffset += degrees * Sensitivity;
+            Draw();
+        }
+
+        function viewMove(move) {
+            FOV = document.getElementById("idRaycastFOV").value;
+            while (true) {
+                centerX += move * Sensitivity * Math.sin(Math.PI * 2 * (ang - FOV / 2) / 360);
+                centerY += move * Sensitivity * Math.cos(Math.PI * 2 * (ang - FOV / 2) / 360);
+                for (var column = 0; column < raycastGridY; column++) {
+                    for (var row = 0; row < raycastGridX; row++) {
+                        if (centerX + 250 >= row * raycastSizeX && centerY + 250 >= column * raycastSizeY && centerX + 250 <= (row + 1) * raycastSizeX && centerY + 250 <= (column + 1) * raycastSizeY && raycastMap[0][column][row] == 1) {
+                            testest = true;
+                            break;
+                        }
+                    }
+                }
+                if (testest) {
+                    centerX -= move * Sensitivity * Math.sin(Math.PI * 2 * (ang - FOV / 2) / 360);
+                    centerY -= move * Sensitivity * Math.cos(Math.PI * 2 * (ang - FOV / 2) / 360);
+                    testest = false;
+                    break;
+                }
+                else {
+                    break;
+                }
+            }
+            Draw();
+        }
+
+        function Draw() {
+            raycastSizeX = 500 / raycastGridX;
+            raycastSizeY = 500 / raycastGridY;
+            ctxR.clearRect(0, 0, 500, 500);
+            ctx3D.clearRect(0, 0, 500, 500);
+            for (var column = 0; column < raycastGridY; column++) {
+                for (var row = 0; row < raycastGridX; row++) {
+                    ctxR.beginPath();
+                    if (raycastMap[raycastCurrentMap][column][row] == 1) {
+                        ctxR.fillStyle = "rgb(255, 255, 255)";
+                        ctxR.rect(row * raycastSizeX - 1, column * raycastSizeY - 1, raycastSizeX + 2, raycastSizeY + 2);
+                    }
+                    if (raycastEnemyPositionX == row && raycastEnemyPositionY == column && raycastCurrentMap == 0) {
+                        ctxR.fillStyle = "rgb(255, 0, 0)";
+                        ctxR.rect(row * raycastSizeX, column * raycastSizeY, raycastSizeX, raycastSizeY);
+                    }
+                    ctxR.fill();
+                }
+            }
+            ctxR.beginPath();
+
+            for (var i = 0; i < lines; i++) {
+                currentDistance = 0;
+                currentX = 250 + centerX;
+                currentY = 250 + centerY;
+                ang = (i / (lines - 1)) * FOV + angOffset;
+                xLineMove = Math.sin(Math.PI * 2 * ang / 360);
+                yLineMove = Math.cos(Math.PI * 2 * ang / 360);
+                while (true) {
+                    currentDistance++;
+                    currentX += xLineMove;
+                    currentY += yLineMove;
+                    ctxR.fillStyle = "rgba(255, 255, 255, 0.75)";
+                    ctxR.rect(currentX, currentY, 1, 1);
+
+                    for (var column = 0; column < raycastGridY; column++) {
+                        for (var row = 0; row < raycastGridX; row++) {
+                            if (raycastMap[raycastCurrentMap][column][row] == 1 && currentX >= row * raycastSizeX && currentY >= column * raycastSizeY && currentX <= (row + 1) * raycastSizeX && currentY <= (column + 1) * raycastSizeY) {
+                                while (true) {
+                                    currentDistance -= 0.01;
+                                    currentX -= 0.01 * xLineMove;
+                                    currentY -= 0.01 * yLineMove;
+                                    if (currentX >= row * raycastSizeX && currentY >= column * raycastSizeY && currentX <= (row + 1) * raycastSizeX && currentY <= (column + 1) * raycastSizeY) {
+                                    }
+                                    else {
+                                        diff = currentDistance * Math.cos(ang * (Math.PI / 180) - angOffset * (Math.PI / 180) - (FOV / 2) * (Math.PI / 180));
+                                        ctx3D.beginPath();
+                                        ctx3D.fillStyle = "rgb(0, 255, 255)";
+                                        ctx3D.rect(500 - (((i + 1) / lines) * 500), 0, 500 / lines, (500 - 50000 / diff) / 2);
+                                        ctx3D.fill();
+                                        ctx3D.beginPath();
+                                        ctx3D.fillStyle = "rgb(" + (255 - Math.floor(diff / 2)) + "," + (255 - Math.floor(diff / 2)) + "," + (255 - Math.floor(diff / 2)) + ")";
+                                        ctx3D.rect(500 - (((i + 1) / lines) * 500), (500 - 500 / (diff / 100)) / 2, 500 / lines, 500 / (diff / 100));
+                                        ctx3D.fill();
+                                        ctx3D.beginPath();
+                                        ctx3D.fillStyle = "rgb(0, 255, 0)";
+                                        ctx3D.rect(500 - (((i + 1) / lines) * 500), (500 - 50000 / diff) / 2 + 50000 / diff, 500 / lines, (500 - 50000 / diff) / 2);
+                                        ctx3D.fill();
+                                        testest = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (raycastEnemyPositionX == row && raycastEnemyPositionY == column && currentX >= row * raycastSizeX && currentY >= column * raycastSizeY && currentX <= (row + 1) * raycastSizeX && currentY <= (column + 1) * raycastSizeY && raycastCurrentMap == 0) {
+                                while (true) {
+                                    currentDistance -= 0.01;
+                                    currentX -= 0.01 * xLineMove;
+                                    currentY -= 0.01 * yLineMove;
+                                    if (currentX >= row * raycastSizeX && currentY >= column * raycastSizeY && currentX <= (row + 1) * raycastSizeX && currentY <= (column + 1) * raycastSizeY) {
+                                    }
+                                    else {
+                                        diff = currentDistance * Math.cos(ang * (Math.PI / 180) - angOffset * (Math.PI / 180) - (FOV / 2) * (Math.PI / 180));
+                                        ctx3D.beginPath();
+                                        ctx3D.fillStyle = "rgb(0, 255, 255)";
+                                        ctx3D.rect(500 - (((i + 1) / lines) * 500), 0, 500 / lines, (500 - 50000 / diff) / 2);
+                                        ctx3D.fill();
+                                        ctx3D.beginPath();
+                                        ctx3D.fillStyle = "rgb(" + (255 - Math.floor(diff / 2)) + ",0,0)";
+                                        ctx3D.rect(500 - (((i + 1) / lines) * 500), (500 - 500 / (diff / 100)) / 2, 500 / lines, 500 / (diff / 100));
+                                        ctx3D.fill();
+                                        ctx3D.beginPath();
+                                        ctx3D.fillStyle = "rgb(0, 255, 0)";
+                                        ctx3D.rect(500 - (((i + 1) / lines) * 500), (500 - 50000 / diff) / 2 + 50000 / diff, 500 / lines, (500 - 50000 / diff) / 2);
+                                        ctx3D.fill();
+                                        testest = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (testest) {
+                        testest = false;
+                        break;
+                    }
+                }
+            }
+            if (raycastShot) {
+                ctx3D.drawImage(raycastShotgunShot, 500 - raycastShotgunShot.width, 500 - raycastShotgunShot.height);
+            }
+            if (!raycastShot) {
+                ctx3D.drawImage(raycastShotgun, 500 - raycastShotgun.width, 500 - raycastShotgun.height);
+            }
+            ctxR.fill();
+        }
+
+        /*
+
+
+
+        */
+
+        var mouseX = 0;
+        var mouseY = 0;
+
+        window.addEventListener("mousemove", function (e) {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        })
+
+        var canvasParticles = document.getElementById("cParticles");
+        var contextParticles = canvasParticles.getContext("2d");
+
+        var particleStartVelX = 10;
+        var particleStartVelY = 15;
+        var particleStartSize = 15;
+        var particleGravity = 0.5;
+        var particleSpeed = 1;
+        var particleAmount = 50;
+        var particleLifetime = 500;
+
+        var particleNum = 0;
+
+        var particleArrPosX = new Array();
+        var particleArrPosY = new Array();
+        var particleArrVelX = new Array();
+        var particleArrVelY = new Array();
+        var particleArrSizeX = new Array();
+        var particleArrSizeY = new Array();
+        var particleArrAlpha = new Array();
+
+        resetParticles();
+        moveParticles();
+
+        function resetParticles() {
+            if (particleNum >= particleAmount) {
+                particleNum = 0;
+            }
+
+            particleArrAlpha[particleNum] = 0;
+
+            particleArrSizeX[particleNum] = (1 - (Math.random() / 2)) * particleStartSize;
+            particleArrSizeY[particleNum] = (1 - (Math.random() / 2)) * particleStartSize;
+
+            particleArrVelX[particleNum] = -Math.random() * particleStartVelX + particleStartVelX / 2;
+            particleArrVelY[particleNum] = (-1 + (Math.random() / 4)) * particleStartVelY;
+
+            if (mouseX > 5 && mouseX < 505 && mouseY > 5 && mouseY < 505) {
+                particleArrPosX[particleNum] = mouseX - particleArrSizeX[particleNum];
+                particleArrPosY[particleNum] = mouseY - particleArrSizeY[particleNum];
+            }
+            else {
+                particleArrPosX[particleNum] = 250;
+                particleArrPosY[particleNum] = 250;
+            }
+            particleNum++;
+            setTimeout(function () { resetParticles(); }, (particleLifetime / particleAmount) / particleSpeed);
+        }
+
+        function moveParticles() {
+
+            particleStartVelX = document.getElementById("idParticleStartVelX").value;
+            particleStartVelY = document.getElementById("idParticleStartVelY").value;
+            particleStartSize = document.getElementById("idParticleStartSize").value;
+            particleLifetime = document.getElementById("idParticleLifetime").value;
+            particleGravity = document.getElementById("idParticleGravity").value;
+            particleAmount = document.getElementById("idParticleAmount").value;
+            particleSpeed = document.getElementById("idParticleSpeed").value;
+
+            contextParticles.clearRect(0, 0, 500, 500);
+            for (var i = 0; i < particleAmount; i++) {
+                if (particleArrPosX[i] < 0 || particleArrPosX[i] + particleArrSizeX[i] > 500) {
+                    particleArrVelX[i] *= -(0.875 + Math.random() * 0.1);
+                }
+                if (particleArrPosY[i] < 0 || particleArrPosY[i] + particleArrSizeY[i] > 500) {
+                    particleArrVelY[i] *= -(0.75 + Math.random() * 0.05);
+                }
+                particleArrAlpha[i] += 1 / (particleLifetime / 20) * particleSpeed;
+                particleArrVelY[i] += particleGravity * particleSpeed;
+                particleArrPosY[i] += particleArrVelY[i] * particleSpeed;
+                particleArrPosX[i] += particleArrVelX[i] * particleSpeed;
+                contextParticles.fillStyle = "rgba(255,255,255," + (1 - particleArrAlpha[i]) + ")";
+                contextParticles.beginPath();
+                contextParticles.rect(particleArrPosX[i], particleArrPosY[i], particleArrSizeX[i], particleArrSizeY[i]);
+                contextParticles.fill();
+            }
+            setTimeout(function () { moveParticles(); }, 20);
+        }
+        </script>
+</body>
